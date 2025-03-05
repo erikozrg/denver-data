@@ -3,18 +3,23 @@
 ## Overview
 This project analyzes crime data in Denver to understand crime patterns, trends, and distribution across different districts and seasons. The goal is to provide insights that can help improve law enforcement strategies and resource allocation.
 
+## Dataset
+- **File:** `crime.csv`
+- **Description:** The dataset contains crime reports with details such as:
+  - `offense_category_id`: The category of the crime
+  - `offense_type_id`: Specific type of crime
+  - `district_id`: The district where the crime occurred
+  - `first_occurrence_date`: Timestamp of the crime
+  - `geo_lon` & `geo_lat`: Geographic coordinates of the crime location
+  - `victim_count`: Number of victims in the incident
+
 ## Project Objectives
-The analysis aims to answer key questions related to crime trends, such as:
-1. What are the trends in crime rates over the years, months, and weeks?
-2. Are there significant increases or decreases in crime rates over time?
-3. Are there specific times of the day when certain crimes occur more frequently?
-4. What are the most common crime types in different districts and neighborhoods?
-5. How does the frequency of each crime type change over time?
-6. Are certain crime types more common in specific seasons?
-7. What is the seasonal variation in crime rates?
-8. Is there a relationship between weather conditions and crime occurrences?
-9. Do certain crimes occur more frequently on cold or rainy days?
-10. Are there significant differences in crime rates and types between different cities?
+This project aims to explore crime trends and patterns to gain a deeper understanding of how crime varies across time, location, and other factors. Key areas of focus include:
+- Identifying long-term and seasonal crime trends.
+- Understanding the distribution of different crime types across districts.
+- Analyzing when and where certain crimes are more likely to occur.
+- Investigating potential correlations between crime rates and external factors such as time of day or weather conditions.
+- Providing data-driven insights that can support law enforcement and public safety initiatives.
 
 ## Project Structure
 - `crime_data_cleaning.py` - Loads, cleans, and processes the crime dataset.
