@@ -1,0 +1,144 @@
+import pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+import geopandas as gpd
+from shapely.geometry import Point
+from google.colab import drive
+
+# Mount Google Drive to access files
+drive.mount('/content/drive')
+
+# Load offense codes dataset
+offenses = pd.read_csv('/content/drive/My Drive/offense_codes.csv')
+
+# Configure Pandas display settings for better readability
+pd.set_option('display.width', 1000)
+pd.set_option('display.max_columns', None)
+pd.set_option('display.max_colwidth', None)
+
+# Remove leading/trailing spaces from all string columns
+offenses = offenses.applymap(lambda x: x.strip() if isinstance(x, str) else x)
+
+# Display unique offense categories
+print(offenses['OFFENSE_CATEGORY_NAME'].unique())
+
+# Filter offenses related to murder
+print(offenses[offenses['OFFENSE_CATEGORY_ID'] == 'murder'])
+
+# Load crime dataset
+crimes = pd.read_csv('/content/drive/My Drive/crime.csv', encoding="latin1")
+
+# Clean string values by stripping spaces
+crimes = crimes.applymap(lambda x: x.strip() if isinstance(x, str) else x)
+
+# Check for duplicate records
+print(crimes[crimes.duplicated()])
+
+# Display the top 5 most common offense types
+common_offenses = crimes['offense_type_id'].value_counts().head().index.tolist()
+print(common_offenses)
+
+# Filter crimes by most common offense types
+print(crimes[crimes['offense_type_id'].isin(common_offenses)])
+
+# Filter and sort murder cases by victim count
+murder_cases = crimes[crimes['offense_category_id'] == 'murder'].sort_values('victim_count', ascending=False)
+print(murder_cases)
+
+# Identify missing district IDs
+print(crimes[crimes['district_id'].isna()])
+
+# Display crimes in Sunnyside neighborhood
+print(crimes[crimes['neighborhood_id'] == 'sunnyside'])
+
+# Unique district IDs
+print(crimes['district_id'].unique())
+
+# Crimes with unknown district ('U')
+print(crimes[crimes['district_id'] == 'U'])
+
+# Load Denver city shape file
+denver = gpd.read_file('/content/drive/My Drive/denvershape.geojson')
+
+def is_inside_denver(lon, lat):
+    """Check if a point is within Denver city limits."""
+    point = Point(lon, lat)
+    return denver.contains(point).any()
+
+# Determine whether crime locations are inside Denver\crimes['in_denver'] = crimes.apply(lambda row: is_inside_denver(row['geo_lon'], row['geo_lat']), axis=1)
+
+# Set out-of-Denver coordinates to NaN
+crimes.loc[(crimes['in_denver'] == False) & (crimes['geo_lat'].notna()), ['geo_lon', 'geo_lat']] = np.nan
+
+# Crimes in Denver but marked with 'U' district
+print(crimes[(crimes['in_denver'] == True) & (crimes['district_id'] == 'U')])
+
+# Crimes outside Denver with district ID
+print(crimes[(crimes['in_denver'] == False) & (crimes['geo_lat'].notna())]['district_id'].value_counts())
+
+# Plot murder cases on Denver map
+plt.figure(figsize=(10, 7))
+ax = denver.plot(figsize=(10, 7), color='lightgray', edgecolor='black')
+sns.scatterplot(
+    data=crimes[(crimes['offense_category_id'] == 'murder') & (crimes['district_id'] != 'U')],
+    x='geo_lon', y='geo_lat', hue='district_id',
+    hue_order=sorted(crimes[crimes['district_id'] != 'U']['district_id'].dropna().unique()),
+    palette='deep', alpha=1, ax=ax)
+plt.show()
+
+# Convert date column to datetime format
+crimes['datetime'] = pd.to_datetime(crimes['first_occurrence_date'])
+crimes['year'] = crimes['datetime'].dt.year
+
+# Plot yearly murder counts
+murder_counts = crimes[crimes['offense_category_id'] == 'murder'].groupby('year').size()
+plt.figure(figsize=(10, 7))
+plt.plot(murder_counts.index, murder_counts.values)
+plt.xlabel('Year')
+plt.ylabel('Number of Murders')
+plt.title('Yearly Murder Counts')
+plt.show()
+
+# Save cleaned dataset
+crimes.to_csv("crimesclean.csv", index=False)
+
+# Plot sexual assault cases per district
+plt.figure(figsize=(10, 7))
+plt.bar(
+    crimes[crimes['offense_category_id'] == 'sexual-assault']['district_id'].value_counts().index,
+    crimes[crimes['offense_category_id'] == 'sexual-assault']['district_id'].value_counts().values)
+plt.xlabel('District ID')
+plt.ylabel('Number of Cases')
+plt.title('Sexual Assault Cases by District')
+plt.show()
+
+# Yearly crime counts by offense category
+crime_counts = crimes.groupby(['year', 'offense_category_id']).size().unstack(fill_value=0)
+plt.figure(figsize=(10, 7))
+for category in crime_counts.columns:
+    plt.plot(crime_counts.index, crime_counts[category], label=category)
+plt.xlabel('Year')
+plt.ylabel('Number of Crimes')
+plt.title('Crime Counts per Year by Offense Category')
+plt.legend(title="Offense Category", bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.show()
+
+# Identify the top 5 crime categories
+total_crime_counts = crime_counts.sum()
+top_5_categories = total_crime_counts.nlargest(5).index
+
+# Filter for top 5 crime categories
+crime_counts_top_5 = crime_counts[top_5_categories]
+
+# Plot top 5 crime categories over time
+plt.figure(figsize=(10, 7))
+for category in crime_counts_top_5.columns:
+    plt.plot(crime_counts_top_5.index, crime_counts_top_5[category], label=category)
+plt.xlabel('Year')
+plt.yticks(range(0, int(crime_counts_top_5.values.max()) + 1, 1000))
+plt.ylabel('Number of Crimes')
+plt.title('Top 5 Crime Categories per Year')
+plt.legend(title="Offense Category", bbox_to_anchor=(1.05, 1), loc='upper left')
+plt.tight_layout()
+plt.show()
